@@ -5,20 +5,18 @@ import { signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth";
 import firebaseApp from "~/utils/firebaseApp";
 
 export default function Home() {
-  const cols = ["Пн", "Вт", "Ср", "Чт"];
+  const cols = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
   const rows = [
-    "9:00 - 9:40",
-    "9:50 - 10:30",
-    "10:40 - 11:20",
-    "11:30 - 12:10",
-    "12:20 - 13:00",
-    "13:10 - 13:50",
-    "14:00 - 14:40",
-    "14:50 - 15:30",
-    "15:40 - 16:20",
-    "16:30 - 17:10",
-    "17:20 - 18:00",
-    "18:10 - 18:50",
+    "9:00",
+    "10:00",
+    "11:00",
+    "12:00",
+    "13:00",
+    "14:00",
+    "15:00",
+    "16:00",
+    "17:00",
+    "18:00",
   ];
 
   let auth = getAuth(firebaseApp);
@@ -30,8 +28,8 @@ export default function Home() {
   const rawvalues = loading ? "" : document?.data()?.times;
 
   const values = new Array(cols.length * rows.length)
-    .fill(false)
-    .map((_, i) => Boolean(Number(rawvalues[i] || 0)));
+    .fill(0)
+    .map((_, i) => Number(rawvalues[i] || 0));
 
   return (
     <>
@@ -40,12 +38,12 @@ export default function Home() {
         <meta name="description" content="Выберите удобное вам время" />
         {/* <link rel="icon" href="/favicon.ico" /> */}
       </Head>
-      <main className="flex min-h-screen flex-col items-center justify-center bg-white">
+      <main className="flex flex-col items-center mt-12 bg-white">
         <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
           <h1 className="text-center text-2xl font-semibold leading-normal">
             Выберите удобное вам время
           </h1>
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-8 gap-2">
             {new Array((cols.length + 1) * (rows.length + 1))
               .fill(0)
               .map((_, i) => {
@@ -57,7 +55,7 @@ export default function Home() {
                   );
                 else if ((i / (cols.length + 1.0)) % 1 === 0)
                   return (
-                    <span className="text-center" key={i}>
+                    <span className="text-center mt-1" key={i}>
                       {rows[i / (cols.length + 1.0) - 1]}
                     </span>
                   );
@@ -67,19 +65,19 @@ export default function Home() {
                   (cols.length + 1) -
                   Math.floor(i / (cols.length + 1)) / (0 + 1);
 
-                const value = values[n] || false;
+                const value = values[n] || 0;
 
                 return (
                   <Slot
                     key={i}
                     n={n}
-                    enabled={value}
-                    onClick={() => {
+                    value={value}
+                    onClick={auth.currentUser ? () => {
                       let newvalues = (rawvalues + "")
                         .split("")
                         .map((v, i) => {
                           if (i !== n) return v;
-                          return value ? 0 : 1;
+                          return (Number(v) + 1) % 3;
                         })
                         .join("");
                       setDoc(
@@ -88,7 +86,7 @@ export default function Home() {
                           times: newvalues,
                         }
                       ).catch(() => {});
-                    }}
+                    } : undefined}
                   />
                 );
               })}
@@ -110,14 +108,16 @@ export default function Home() {
   );
 }
 
-function Slot(params: { enabled: boolean; n: number; onClick: () => void }) {
+function Slot(params: { value: number; n: number; onClick?: () => void }) {
   return (
     <div
       className={
-        `cursor-pointer rounded-lg border border-gray-200 px-6 py-4 transition-all` +
-        (params.enabled
-          ? " bg-white shadow hover:-translate-y-1 hover:shadow-lg"
-          : " bg-gray-100")
+        `${params.onClick ? "cursor-pointer" : ""} rounded-lg border border-gray-200 px-6 py-4 transition-all` +
+        (params.value === 0
+          ? " bg-gray-100"
+          : params.value === 1
+          ? " bg-green-500"
+          : " bg-red-300")
       }
       onClick={params.onClick}
     />
