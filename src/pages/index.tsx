@@ -5,7 +5,6 @@ import { signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth";
 import firebaseApp from "~/utils/firebaseApp";
 import { useState, useEffect, useCallback } from "react";
 
-// Custom debounce hook
 function useDebounce(value: boolean, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -22,7 +21,6 @@ function useDebounce(value: boolean, delay: number) {
   return debouncedValue;
 }
 
-// Flag animation component
 function FlagAnimation() {
   const [currentFlagIndex, setCurrentFlagIndex] = useState(0);
   const [isColoring, setIsColoring] = useState(true);
@@ -42,24 +40,20 @@ function FlagAnimation() {
   useEffect(() => {
     const interval = setInterval(() => {
       if (isColoring) {
-        // Coloring phase
         if (currentFlagIndex < flags.length) {
           setColoredFlags(prev => [...prev, currentFlagIndex]);
           setCurrentFlagIndex(prev => prev + 1);
         } else {
-          // Wait a bit when all flags are colored
           setTimeout(() => {
             setIsColoring(false);
             setCurrentFlagIndex(0);
-          }, 1000);
+          }, 100);
         }
       } else {
-        // Graying phase
         if (currentFlagIndex < flags.length) {
           setColoredFlags(prev => prev.filter(i => i !== currentFlagIndex));
           setCurrentFlagIndex(prev => prev + 1);
         } else {
-          // Start coloring again
           setIsColoring(true);
           setCurrentFlagIndex(0);
         }
@@ -222,36 +216,28 @@ export default function Home() {
   const [showContent, setShowContent] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
-  const debouncedLoading = useDebounce(loading, 1000);
+  const debouncedLoading = useDebounce(loading, 100);
 
   useEffect(() => {
     if (!debouncedLoading && document) {
-      // Start transition
       setIsTransitioning(true);
-      // Show content after a brief delay for smooth transition
       const timer = setTimeout(() => {
         setShowContent(true);
         setIsTransitioning(false);
       }, 300);
       return () => clearTimeout(timer);
     } else {
-      // Reset states when loading starts again
-      setShowContent(false);
-      setIsTransitioning(false);
     }
   }, [debouncedLoading]);
 
-  if (debouncedLoading || isTransitioning) {
-    return (
-      <TransitionComponent showContent={!isTransitioning}>
-        <LoadingPage />
-      </TransitionComponent>
-    );
+  let content = <LoadingPage />;
+  if (document && !debouncedLoading && !isTransitioning && showContent) {
+    content = <TimetablePage document={document} />;
   }
 
   return (
-    <TransitionComponent showContent={showContent}>
-      <TimetablePage document={document!} />
+    <TransitionComponent showContent={!isTransitioning}>
+      {content}
     </TransitionComponent>
   );
 }

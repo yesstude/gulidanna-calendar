@@ -12,7 +12,7 @@ h1, h2, h3, h4, h5, h6, p, span {
 
 /* Emoji font configuration */
 .emoji {
-  font-family: "Noto Color Emoji", sans-serif;
+  font-family: 'Noto Color Emoji', 'Apple Color Emoji', 'Twemoji Mozilla', 'EmojiOne Color', 'Android Emoji', sans-serif;
   font-weight: 400;
   font-style: normal;
   font-size: 2em;
