@@ -3,8 +3,18 @@
 @tailwind utilities;
 
 @import url('https://fonts.googleapis.com/css2?family=Geologica:wght@100,200,300,400,500,600,700,800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji:wght@400&display=swap');
 
 h1, h2, h3, h4, h5, h6, p, span {
   font-family: 'Geologica', sans-serif;
   color: #5f5f5f;
+}
+
+/* Emoji font configuration */
+.emoji {
+  font-family: "Noto Color Emoji", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+  font-size: 2em;
+  line-height: 1;
 }

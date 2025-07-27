@@ -1,10 +1,110 @@
 import Head from "next/head";
-import { doc, getFirestore, setDoc } from "firebase/firestore";
+import { doc, DocumentData, DocumentSnapshot, getFirestore, setDoc } from "firebase/firestore";
 import { useDocument } from "react-firebase-hooks/firestore";
 import { signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth";
 import firebaseApp from "~/utils/firebaseApp";
+import { useState, useEffect, useCallback } from "react";
 
-export default function Home() {
+// Custom debounce hook
+function useDebounce(value: boolean, delay: number) {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
+// Flag animation component
+function FlagAnimation() {
+  const [currentFlagIndex, setCurrentFlagIndex] = useState(0);
+  const [isColoring, setIsColoring] = useState(true);
+  const [coloredFlags, setColoredFlags] = useState<number[]>([]);
+
+  const flags = [
+    { country: "Россия", emoji: "🇷🇺" },
+    { country: "США", emoji: "🇺🇸" },
+    { country: "Германия", emoji: "🇩🇪" },
+    { country: "Франция", emoji: "🇫🇷" },
+    { country: "Япония", emoji: "🇯🇵" },
+    { country: "Великобритания", emoji: "🇬🇧" },
+    { country: "Италия", emoji: "🇮🇹" },
+    { country: "Испания", emoji: "🇪🇸" },
+  ];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isColoring) {
+        // Coloring phase
+        if (currentFlagIndex < flags.length) {
+          setColoredFlags(prev => [...prev, currentFlagIndex]);
+          setCurrentFlagIndex(prev => prev + 1);
+        } else {
+          // Wait a bit when all flags are colored
+          setTimeout(() => {
+            setIsColoring(false);
+            setCurrentFlagIndex(0);
+          }, 1000);
+        }
+      } else {
+        // Graying phase
+        if (currentFlagIndex < flags.length) {
+          setColoredFlags(prev => prev.filter(i => i !== currentFlagIndex));
+          setCurrentFlagIndex(prev => prev + 1);
+        } else {
+          // Start coloring again
+          setIsColoring(true);
+          setCurrentFlagIndex(0);
+        }
+      }
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [currentFlagIndex, isColoring, flags.length]);
+
+  return (
+    <div className="flex flex-col h-[calc(80vh-400px)] justify-center items-center gap-6">
+      <div className="flex gap-4 flex-wrap justify-center">
+        {flags.map((flag, index) => (
+          <div
+            key={index}
+            className={`text-4xl emoji transition-all duration-300 ease-in-out ${
+              coloredFlags.includes(index) 
+                ? 'opacity-100' 
+                : 'opacity-80'
+            }`}
+            style={{
+              filter: coloredFlags.includes(index) 
+                ? 'none' 
+                : 'brightness(0.3) saturate(0) contrast(200%)',
+            }}
+          >
+            {flag.emoji}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function LoadingPage() {
+  return (
+    <>
+        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
+          <FlagAnimation />
+        </div>
+    </>
+  );
+}
+
+function TimetablePage(props: { document: DocumentSnapshot<DocumentData> }) {
   const cols = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
   const rows = [
     "9:00",
@@ -21,11 +121,7 @@ export default function Home() {
 
   let auth = getAuth(firebaseApp);
 
-  const [document, loading] = useDocument(
-    doc(getFirestore(firebaseApp), "config", "times")
-  );
-
-  const rawvalues = loading ? "" : document?.data()?.times;
+  const rawvalues = props.document.data()?.times;
 
   const values = new Array(cols.length * rows.length)
     .fill(0)
@@ -33,13 +129,7 @@ export default function Home() {
 
   return (
     <>
-      <Head>
-        <title>Календарь</title>
-        <meta name="description" content="Выберите удобное вам время" />
-        {/* <link rel="icon" href="/favicon.ico" /> */}
-      </Head>
-      <main className="flex flex-col items-center mt-12 bg-white">
-        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16 ">
+        <div className="container flex flex-col items-center justify-center gap-12 px-4 py-16">
           <h1 className="text-center text-2xl font-semibold leading-normal">
             Выберите удобное вам время
           </h1>
@@ -91,11 +181,11 @@ export default function Home() {
                 );
               })}
           </div>
-        </div>
         {auth.currentUser ? (
           ""
         ) : (
           <button
+            className="bg-blue-500 text-white px-4 py-2 rounded-md"
             onClick={() => {
               signInWithPopup(auth, new GoogleAuthProvider());
             }}
@@ -103,7 +193,8 @@ export default function Home() {
             Редактировать
           </button>
         )}
-      </main>
+        </div>
+      
     </>
   );
 }
@@ -112,7 +203,7 @@ function Slot(params: { value: number; n: number; onClick?: () => void }) {
   return (
     <div
       className={
-        `${params.onClick ? "cursor-pointer" : ""} rounded-lg border border-gray-200 px-6 py-4 transition-all` +
+        `${params.onClick ? "cursor-pointer" : ""} rounded-lg border border-gray-200 px-6 py-4 transition-all duration-300 ease-in-out` +
         (params.value === 0
           ? " bg-gray-100"
           : params.value === 1
@@ -121,5 +212,67 @@ function Slot(params: { value: number; n: number; onClick?: () => void }) {
       }
       onClick={params.onClick}
     />
+  );
+}
+
+export default function Home() {
+  const [document, loading] = useDocument(
+    doc(getFirestore(firebaseApp), "config", "times")
+  );
+  const [showContent, setShowContent] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+  const debouncedLoading = useDebounce(loading, 1000);
+
+  useEffect(() => {
+    if (!debouncedLoading && document) {
+      // Start transition
+      setIsTransitioning(true);
+      // Show content after a brief delay for smooth transition
+      const timer = setTimeout(() => {
+        setShowContent(true);
+        setIsTransitioning(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else {
+      // Reset states when loading starts again
+      setShowContent(false);
+      setIsTransitioning(false);
+    }
+  }, [debouncedLoading]);
+
+  if (debouncedLoading || isTransitioning) {
+    return (
+      <TransitionComponent showContent={!isTransitioning}>
+        <LoadingPage />
+      </TransitionComponent>
+    );
+  }
+
+  return (
+    <TransitionComponent showContent={showContent}>
+      <TimetablePage document={document!} />
+    </TransitionComponent>
+  );
+}
+
+function TransitionComponent(props: { children: React.ReactNode, showContent: boolean }) {
+  return (
+    <>
+      <Head>
+        <title>Календарь</title>
+        <meta name="description" content="Выберите удобное вам время" />
+        <style>
+          {`
+            @import url('https://fonts.googleapis.com/css2?family=Noto+Color+Emoji&family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap');
+          `}
+        </style>
+      </Head>
+      <main className="flex flex-col items-center md:mt-6 bg-white">
+        <div className={`transition-opacity duration-500 ease-in-out ${props.showContent ? 'opacity-100' : 'opacity-0'}`}>
+          {props.children}
+        </div>
+      </main>
+    </>
   );
 }
