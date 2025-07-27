@@ -4,6 +4,7 @@ import { useDocument } from "react-firebase-hooks/firestore";
 import { signInWithPopup, GoogleAuthProvider, getAuth } from "firebase/auth";
 import firebaseApp from "~/utils/firebaseApp";
 import { useState, useEffect, useCallback } from "react";
+import { useAuthState } from "react-firebase-hooks/auth";
 
 function useDebounce(value: boolean, delay: number) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -113,7 +114,7 @@ function TimetablePage(props: { document: DocumentSnapshot<DocumentData> }) {
     "18:00",
   ];
 
-  let auth = getAuth(firebaseApp);
+  let [auth, loading, error] = useAuthState(getAuth(firebaseApp));
 
   const rawvalues = props.document.data()?.times;
 
@@ -156,7 +157,7 @@ function TimetablePage(props: { document: DocumentSnapshot<DocumentData> }) {
                     key={i}
                     n={n}
                     value={value}
-                    onClick={auth.currentUser ? () => {
+                    onClick={auth ? () => {
                       let newvalues = (rawvalues + "")
                         .split("")
                         .map((v, i) => {
@@ -175,13 +176,13 @@ function TimetablePage(props: { document: DocumentSnapshot<DocumentData> }) {
                 );
               })}
           </div>
-        {auth.currentUser ? (
+        {auth ? (
           ""
         ) : (
           <button
             className="bg-blue-500 text-white px-4 py-2 rounded-md"
             onClick={() => {
-              signInWithPopup(auth, new GoogleAuthProvider());
+              signInWithPopup(getAuth(firebaseApp), new GoogleAuthProvider());
             }}
           >
             Редактировать
